@@ -1,5 +1,7 @@
 # Wordpress Blogs to Framer Blogs converter
 
+## Wordpress to Framer Converter - For Blog Posts & More
+
 This is pretty simple. Just download and then go to your wordpress site > Tools > export > posts and then download the .xml file and upload to this. Then click process file and export to framer. Done ✅
 
 ### This code runs locally as a .html file on your machine. You must just download and click on view.html
