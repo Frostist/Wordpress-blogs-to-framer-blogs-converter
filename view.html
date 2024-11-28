@@ -104,6 +104,7 @@
         <div class="filter-controls">
             <button onclick="reverseResults()" class="upload-btn sort-btn">Reverse Order</button>
             <button onclick="toggleShowAll()" class="upload-btn sort-btn" id="showAllBtn">Show All Posts</button>
+            <button onclick="downloadFramerCSV()" class="upload-btn sort-btn" id="framerExportBtn">Export for Framer</button>
         </div>
         <div class="url-count" id="urlCount"></div>
         <ul id="resultList"></ul>
@@ -299,6 +300,146 @@
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+        }
+
+        function downloadFramerCSV() {
+            if (!xmlContent) {
+                alert('Please process an XML file first');
+                return;
+            }
+
+            try {
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xmlContent, "text/xml");
+                const framerData = [];
+
+                const items = xmlDoc.getElementsByTagName('item');
+                for (let item of items) {
+                    // Check if it's a post
+                    const postTypeElements = item.getElementsByTagName('wp:post_type');
+                    if (postTypeElements.length > 0 && postTypeElements[0].textContent === 'post') {
+                        // Get title
+                        const titleElement = item.getElementsByTagName('title')[0];
+                        const title = titleElement ? titleElement.textContent.replace('<![CDATA[', '').replace(']]>', '') : '';
+
+                        // Get slug (link)
+                        const linkElement = item.getElementsByTagName('link')[0];
+                        let slug = '';
+                        if (linkElement) {
+                            const url = linkElement.textContent;
+                            // Extract just the slug portion
+                            const matches = url.match(/\/([^/]+)\/?$/);
+                            slug = matches ? '/' + matches[1] + '/' : '';
+                        }
+
+                        // Get date
+                        const dateElement = item.getElementsByTagName('pubDate')[0];
+                        const date = dateElement ? dateElement.textContent : '';
+
+                        // Get content
+                        const contentElement = item.getElementsByTagName('content:encoded')[0];
+                        const content = contentElement ? contentElement.textContent.replace('<![CDATA[', '').replace(']]>', '') : '';
+
+                        // Get featured image URL
+                        let imageUrl = '';
+                        const postmetas = item.getElementsByTagName('wp:postmeta');
+                        let thumbnailId = null;
+                        
+                        for (let meta of postmetas) {
+                            const metaKey = meta.getElementsByTagName('wp:meta_key')[0];
+                            if (metaKey && metaKey.textContent === '_thumbnail_id') {
+                                const metaValue = meta.getElementsByTagName('wp:meta_value')[0];
+                                if (metaValue) {
+                                    thumbnailId = metaValue.textContent;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (thumbnailId) {
+                            const allItems = xmlDoc.getElementsByTagName('item');
+                            for (let attachmentItem of allItems) {
+                                const postId = attachmentItem.getElementsByTagName('wp:post_id')[0];
+                                if (postId && postId.textContent === thumbnailId) {
+                                    const attachmentUrl = attachmentItem.getElementsByTagName('wp:attachment_url')[0];
+                                    if (attachmentUrl) {
+                                        imageUrl = attachmentUrl.textContent.replace('<![CDATA[', '').replace(']]>', '');
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+
+                        framerData.push({
+                            title: title,
+                            slug: slug,
+                            image: imageUrl,
+                            date: date,
+                            content: content
+                        });
+                    }
+                }
+
+                // Create CSV header
+                const header = ['Title', 'Slug', 'Image', 'Date', 'Content'];
+                
+                // Convert data to CSV rows
+                const rows = framerData.map(item => [
+                    `"${item.title.replace(/"/g, '""')}"`,
+                    `"${item.slug.replace(/"/g, '""')}"`,
+                    `"${item.image.replace(/"/g, '""')}"`,
+                    `"${item.date.replace(/"/g, '""')}"`,
+                    `"${item.content.replace(/"/g, '""')}"`,
+                ]);
+
+                // Split into chunks of approximately 4MB
+                const MAX_CHUNK_SIZE = 4 * 1024 * 1024; // 4MB in bytes
+                const chunks = [];
+                let currentChunk = [header];
+                let currentSize = header.join(',').length;
+
+                for (const row of rows) {
+                    const rowSize = row.join(',').length;
+                    
+                    if (currentSize + rowSize > MAX_CHUNK_SIZE) {
+                        chunks.push(currentChunk);
+                        currentChunk = [header];
+                        currentSize = header.join(',').length;
+                    }
+                    
+                    currentChunk.push(row);
+                    currentSize += rowSize;
+                }
+                
+                // Add the last chunk if it has any rows
+                if (currentChunk.length > 1) { // More than just the header
+                    chunks.push(currentChunk);
+                }
+
+                // Download each chunk
+                chunks.forEach((chunk, index) => {
+                    const csvContent = chunk.map(row => row.join(',')).join('\n');
+                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement('a');
+                    const url = URL.createObjectURL(blob);
+                    link.setAttribute('href', url);
+                    link.setAttribute('download', `framer-export-part${index + 1}.csv`);
+                    link.style.visibility = 'hidden';
+                    document.body.appendChild(link);
+                    
+                    // Add a small delay between downloads to prevent browser issues
+                    setTimeout(() => {
+                        link.click();
+                        document.body.removeChild(link);
+                        URL.revokeObjectURL(url);
+                    }, index * 100);
+                });
+
+                alert(`Export complete! ${chunks.length} file${chunks.length > 1 ? 's' : ''} created.`);
+
+            } catch (error) {
+                alert(`Error creating Framer export: ${error.message}`);
+            }
         }
     </script>
 </body>
