@@ -103,6 +103,7 @@
         <button onclick="processFile()" class="upload-btn">Process File</button>
         <div class="filter-controls">
             <button onclick="reverseResults()" class="upload-btn sort-btn">Reverse Order</button>
+            <button onclick="toggleShowAll()" class="upload-btn sort-btn" id="showAllBtn">Show All Posts</button>
         </div>
         <div class="url-count" id="urlCount"></div>
         <ul id="resultList"></ul>
@@ -112,6 +113,8 @@
     <script>
         let xmlContent = '';
         let currentResults = []; // Store results globally for download access
+        let allPosts = []; // Store all posts including ones without featured images
+        let showingAll = false; // Track which view is currently shown
 
         function handleFileSelect(event) {
             const file = event.target.files[0];
@@ -141,6 +144,7 @@
                 const parser = new DOMParser();
                 const xmlDoc = parser.parseFromString(xmlContent, "text/xml");
                 const results = [];
+                allPosts = []; // Reset all posts array
 
                 const items = xmlDoc.getElementsByTagName('item');
                 for (let item of items) {
@@ -167,6 +171,9 @@
                             }
                         }
 
+                        // Store all posts regardless of thumbnail
+                        allPosts.push({ title: postTitle, thumbnailId: thumbnailId });
+
                         if (thumbnailId) {
                             const allItems = xmlDoc.getElementsByTagName('item');
                             for (let attachmentItem of allItems) {
@@ -184,16 +191,10 @@
                     }
                 }
 
-                if (results.length === 0) {
-                    resultList.innerHTML = '<li>No featured image URLs found</li>';
-                    urlCount.textContent = '';
-                    return;
-                }
-
-                currentResults = results; // Store results for download
-                urlCount.textContent = `Found ${results.length} featured image URL${results.length > 1 ? 's' : ''}:`;
+                currentResults = results;
                 displayResults(results);
                 downloadBtn.style.display = 'inline-block';
+                updateUrlCount();
             } catch (error) {
                 resultList.innerHTML = `<li>Error extracting URLs: ${error.message}</li>`;
                 urlCount.textContent = '';
@@ -219,14 +220,58 @@
             });
         }
 
-        function reverseResults() {
-            if (currentResults.length === 0) {
-                alert('No results to reverse');
-                return;
+        function toggleShowAll() {
+            showingAll = !showingAll;
+            document.getElementById('showAllBtn').textContent = showingAll ? 'Show Featured Only' : 'Show All Posts';
+            if (showingAll) {
+                displayAllPosts();
+            } else {
+                displayResults(currentResults);
             }
-            
-            currentResults.reverse();
-            displayResults(currentResults);
+            updateUrlCount();
+        }
+
+        function displayAllPosts() {
+            const resultList = document.getElementById('resultList');
+            resultList.innerHTML = '';
+
+            allPosts.forEach(post => {
+                const matchingResult = currentResults.find(r => r.title === post.title);
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <div class="post-title">${post.title}</div>
+                    <div class="image-url">
+                        ${matchingResult ? `<a href="${matchingResult.url}" target="_blank">${matchingResult.url}</a>` : 'No featured image'}
+                    </div>
+                    <div class="image-preview">
+                        ${matchingResult ? `<img src="${matchingResult.url}" alt="Preview" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgZmlsbD0iI2YwZjBmMCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiM5OTkiPkltYWdlIG5vdCBmb3VuZDwvdGV4dD48L3N2Zz4='"/>` : ''}
+                    </div>
+                `;
+                resultList.appendChild(li);
+            });
+        }
+
+        function updateUrlCount() {
+            const urlCount = document.getElementById('urlCount');
+            if (showingAll) {
+                urlCount.textContent = `Showing all posts (${allPosts.length} total, ${currentResults.length} with featured images)`;
+            } else {
+                urlCount.textContent = `Found ${currentResults.length} featured image URL${currentResults.length > 1 ? 's' : ''}:`;
+            }
+        }
+
+        function reverseResults() {
+            if (showingAll) {
+                allPosts.reverse();
+                displayAllPosts();
+            } else {
+                if (currentResults.length === 0) {
+                    alert('No results to reverse');
+                    return;
+                }
+                currentResults.reverse();
+                displayResults(currentResults);
+            }
         }
 
         function downloadCSV() {
