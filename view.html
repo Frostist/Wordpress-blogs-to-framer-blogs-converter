@@ -20,9 +20,10 @@
             border-radius: 4px;
             display: flex;
             gap: 20px;
+            align-items: start;
         }
         .post-title {
-            flex: 0 0 300px;
+            flex: 0 0 200px;
             word-break: break-word;
             padding-right: 20px;
             border-right: 1px solid #ddd;
@@ -30,6 +31,16 @@
         .image-url {
             flex: 1;
             word-break: break-all;
+            padding-right: 20px;
+            border-right: 1px solid #ddd;
+        }
+        .image-preview {
+            flex: 0 0 200px;
+        }
+        .image-preview img {
+            max-width: 200px;
+            max-height: 150px;
+            object-fit: contain;
         }
         .file-upload {
             margin-bottom: 20px;
@@ -65,6 +76,20 @@
         .download-btn:hover {
             background: #1976D2;
         }
+        .filter-controls {
+            margin: 10px 0;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .sort-btn {
+            background: #9C27B0;
+        }
+        
+        .sort-btn:hover {
+            background: #7B1FA2;
+        }
     </style>
 </head>
 <body>
@@ -76,6 +101,9 @@
             <span id="fileName" class="file-name"></span>
         </div>
         <button onclick="processFile()" class="upload-btn">Process File</button>
+        <div class="filter-controls">
+            <button onclick="reverseResults()" class="upload-btn sort-btn">Reverse Order</button>
+        </div>
         <div class="url-count" id="urlCount"></div>
         <ul id="resultList"></ul>
         <button onclick="downloadCSV()" id="downloadBtn" class="upload-btn download-btn">Download CSV</button>
@@ -164,24 +192,41 @@
 
                 currentResults = results; // Store results for download
                 urlCount.textContent = `Found ${results.length} featured image URL${results.length > 1 ? 's' : ''}:`;
-
-                results.forEach(result => {
-                    const li = document.createElement('li');
-                    li.innerHTML = `
-                        <div class="post-title">${result.title}</div>
-                        <div class="image-url">
-                            <a href="${result.url}" target="_blank">${result.url}</a>
-                        </div>
-                    `;
-                    resultList.appendChild(li);
-                });
-
-                // Show download button when results are available
+                displayResults(results);
                 downloadBtn.style.display = 'inline-block';
             } catch (error) {
                 resultList.innerHTML = `<li>Error extracting URLs: ${error.message}</li>`;
                 urlCount.textContent = '';
             }
+        }
+
+        function displayResults(results) {
+            const resultList = document.getElementById('resultList');
+            resultList.innerHTML = '';
+
+            results.forEach(result => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <div class="post-title">${result.title}</div>
+                    <div class="image-url">
+                        <a href="${result.url}" target="_blank">${result.url}</a>
+                    </div>
+                    <div class="image-preview">
+                        <img src="${result.url}" alt="Preview" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgZmlsbD0iI2YwZjBmMCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiM5OTkiPkltYWdlIG5vdCBmb3VuZDwvdGV4dD48L3N2Zz4='"/>
+                    </div>
+                `;
+                resultList.appendChild(li);
+            });
+        }
+
+        function reverseResults() {
+            if (currentResults.length === 0) {
+                alert('No results to reverse');
+                return;
+            }
+            
+            currentResults.reverse();
+            displayResults(currentResults);
         }
 
         function downloadCSV() {
