@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WordPress Featured Image URL Extractor</title>
+    <style>
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        #imageList {
+            list-style: none;
+            padding: 0;
+        }
+        #imageList li {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 4px;
+            word-break: break-all;
+        }
+        .file-upload {
+            margin-bottom: 20px;
+        }
+        .url-count {
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        #fileInput {
+            display: none;
+        }
+        .upload-btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        .upload-btn:hover {
+            background: #45a049;
+        }
+        .file-name {
+            margin-left: 10px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>WordPress Featured Image URL Extractor</h2>
+        <div class="file-upload">
+            <label for="fileInput" class="upload-btn">Choose XML File</label>
+            <input type="file" id="fileInput" accept=".xml" onchange="handleFileSelect(event)" />
+            <span id="fileName" class="file-name"></span>
+        </div>
+        <button onclick="processFile()" class="upload-btn">Process File</button>
+        <div class="url-count" id="urlCount"></div>
+        <ul id="imageList"></ul>
+    </div>
+
+    <script>
+        let xmlContent = '';
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                document.getElementById('fileName').textContent = file.name;
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    xmlContent = e.target.result;
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        function processFile() {
+            if (!xmlContent) {
+                alert('Please select an XML file first');
+                return;
+            }
+            
+            const imageList = document.getElementById('imageList');
+            const urlCount = document.getElementById('urlCount');
+            imageList.innerHTML = '';
+
+            try {
+                // Create a DOM parser to work with the XML
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xmlContent, "text/xml");
+                const urls = [];
+
+                // Find all items with post type "post"
+                const items = xmlDoc.getElementsByTagName('item');
+                for (let item of items) {
+                    const postTypeElements = item.getElementsByTagName('wp:post_type');
+                    if (postTypeElements.length > 0 && 
+                        postTypeElements[0].textContent.includes('post')) {
+                        
+                        // Find thumbnail ID in postmeta
+                        const postmetas = item.getElementsByTagName('wp:postmeta');
+                        let thumbnailId = null;
+                        
+                        for (let meta of postmetas) {
+                            const metaKey = meta.getElementsByTagName('wp:meta_key')[0];
+                            if (metaKey && metaKey.textContent.includes('_thumbnail_id')) {
+                                const metaValue = meta.getElementsByTagName('wp:meta_value')[0];
+                                if (metaValue) {
+                                    thumbnailId = metaValue.textContent.replace('<![CDATA[', '').replace(']]>', '');
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (thumbnailId) {
+                            // Find attachment with matching post_id
+                            const allItems = xmlDoc.getElementsByTagName('item');
+                            for (let attachmentItem of allItems) {
+                                const postId = attachmentItem.getElementsByTagName('wp:post_id')[0];
+                                if (postId && postId.textContent === thumbnailId) {
+                                    const attachmentUrl = attachmentItem.getElementsByTagName('wp:attachment_url')[0];
+                                    if (attachmentUrl) {
+                                        const url = attachmentUrl.textContent.replace('<![CDATA[', '').replace(']]>', '');
+                                        const a = document.createElement('a');
+                                        a.href = url;
+                                        a.textContent = url;
+                                        a.target = '_blank';
+                                        urls.push(a.outerHTML);
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (urls.length === 0) {
+                    imageList.innerHTML = '<li>No featured image URLs found</li>';
+                    urlCount.textContent = '';
+                    return;
+                }
+
+                // Display count of URLs found
+                urlCount.textContent = `Found ${urls.length} featured image URL${urls.length > 1 ? 's' : ''}:`;
+
+                // Create list item with all URLs
+                const li = document.createElement('li');
+                li.innerHTML = urls.join(',<br>');
+                imageList.appendChild(li);
+            } catch (error) {
+                imageList.innerHTML = `<li>Error extracting URLs: ${error.message}</li>`;
+                urlCount.textContent = '';
+            }
+        }
+    </script>
+</body>
+</html>
