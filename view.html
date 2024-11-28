@@ -57,6 +57,14 @@
             margin-left: 10px;
             font-style: italic;
         }
+        .download-btn {
+            display: none; /* Hidden by default, shown when results are available */
+            margin-top: 20px;
+            background: #2196F3;
+        }
+        .download-btn:hover {
+            background: #1976D2;
+        }
     </style>
 </head>
 <body>
@@ -70,10 +78,12 @@
         <button onclick="processFile()" class="upload-btn">Process File</button>
         <div class="url-count" id="urlCount"></div>
         <ul id="resultList"></ul>
+        <button onclick="downloadCSV()" id="downloadBtn" class="upload-btn download-btn">Download CSV</button>
     </div>
 
     <script>
         let xmlContent = '';
+        let currentResults = []; // Store results globally for download access
 
         function handleFileSelect(event) {
             const file = event.target.files[0];
@@ -95,7 +105,9 @@
             
             const resultList = document.getElementById('resultList');
             const urlCount = document.getElementById('urlCount');
+            const downloadBtn = document.getElementById('downloadBtn');
             resultList.innerHTML = '';
+            downloadBtn.style.display = 'none';
 
             try {
                 const parser = new DOMParser();
@@ -150,6 +162,7 @@
                     return;
                 }
 
+                currentResults = results; // Store results for download
                 urlCount.textContent = `Found ${results.length} featured image URL${results.length > 1 ? 's' : ''}:`;
 
                 results.forEach(result => {
@@ -162,10 +175,40 @@
                     `;
                     resultList.appendChild(li);
                 });
+
+                // Show download button when results are available
+                downloadBtn.style.display = 'inline-block';
             } catch (error) {
                 resultList.innerHTML = `<li>Error extracting URLs: ${error.message}</li>`;
                 urlCount.textContent = '';
             }
+        }
+
+        function downloadCSV() {
+            if (currentResults.length === 0) {
+                alert('No data to download');
+                return;
+            }
+
+            // Create CSV content
+            const csvContent = [
+                ['Post Title', 'Image URL'], // Header row
+                ...currentResults.map(result => [
+                    `"${result.title.replace(/"/g, '""')}"`, // Escape quotes in titles
+                    result.url
+                ])
+            ].map(row => row.join(',')).join('\n');
+
+            // Create and trigger download
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'featured-images.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
     </script>
 </body>
