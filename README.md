@@ -31,9 +31,6 @@ This utility is particularly useful when you need to:
 
 ## Requirements
 
-- Python 3.x
-- XML parsing capabilities
+- A Web broweser that supports Javascript
 
-## Output Format
 
-The tool outputs data in the following format:
