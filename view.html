@@ -168,6 +168,42 @@
         input[type="file"] {
             display: none;
         }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #edf2f7;
+            border-radius: 10px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        #progressText {
+            text-align: center;
+            color: #4a5568;
+            font-size: 0.9em;
+        }
+
+        .search-input {
+            padding: 10px 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.95em;
+            width: 250px;
+            transition: border-color 0.2s;
+        }
+
+        .search-input:focus {
+            border-color: #4CAF50;
+            outline: none;
+        }
     </style>
 </head>
 <body>
@@ -184,6 +220,7 @@
             <button onclick="toggleShowAll()" class="upload-btn sort-btn" id="showAllBtn">Show All Posts</button>
             <button onclick="downloadFramerCSV()" class="upload-btn sort-btn" id="framerExportBtn">Export for Framer</button>
             <button onclick="downloadCSV()" id="downloadBtn" class="upload-btn sort-btn">Download Image CSV</button>
+            <input type="text" id="searchInput" placeholder="Search posts..." class="search-input">
         </div>
         <div class="url-count" id="urlCount"></div>
         <ul id="resultList"></ul>
@@ -523,6 +560,19 @@
                 alert(`Error creating Framer export: ${error.message}`);
             }
         }
+
+        function filterPosts() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const posts = document.getElementById('resultList').getElementsByTagName('li');
+            
+            Array.from(posts).forEach(post => {
+                const title = post.querySelector('.post-title').textContent.toLowerCase();
+                post.style.display = title.includes(searchTerm) ? '' : 'none';
+            });
+        }
+
+        // Add event listener to search input
+        document.getElementById('searchInput').addEventListener('input', filterPosts);
     </script>
 </body>
 </html>
