@@ -376,7 +376,8 @@
             if (showingAll) {
                 urlCount.textContent = `Showing all posts (${allPosts.length} total, ${currentResults.length} with featured images)`;
             } else {
-                urlCount.textContent = `Found ${currentResults.length} featured image URL${currentResults.length > 1 ? 's' : ''}:`;
+                const postsWithoutImages = allPosts.length - currentResults.length;
+                urlCount.textContent = `Found ${currentResults.length} featured image${currentResults.length !== 1 ? 's' : ''} and ${postsWithoutImages} post${postsWithoutImages !== 1 ? 's' : ''} without featured images (${allPosts.length} total posts)`;
             }
         }
 
